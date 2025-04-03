@@ -12,8 +12,8 @@ st.write("Preencha os dados abaixo para gerar sua escala semanal.")
 # Entradas básicas
 dias_semana = 5  # fixo
 turnos = ['Manhã', 'Tarde']
-pessoas_manha = st.number_input("Pessoas por turno da MANHÃ", min_value=2, max_value=10, value=4)
-pessoas_tarde = st.number_input("Pessoas por turno da TARDE", min_value=2, max_value=10, value=2)
+pessoas_manha = st.number_input("Pessoas por turno da Manhã", min_value=2, max_value=10, value=4)
+pessoas_tarde = st.number_input("Pessoas por turno da Tarde", min_value=2, max_value=10, value=2)
 
 capacidade = {'Manhã': pessoas_manha, 'Tarde': pessoas_tarde}
 
@@ -52,7 +52,11 @@ if submitted:
                     contagem[escolhido] += 1
         return escala, contagem
 
-    escala, contagem = gerar_escala()
+    # LOOP DE TENTATIVAS
+    for tentativa in range(1000):
+        escala, contagem = gerar_escala()
+        if escala:
+            break
 
     if escala:
         st.success("Escala gerada com sucesso!")
