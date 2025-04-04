@@ -4,17 +4,29 @@ import pandas as pd
 import random
 from collections import defaultdict
 from io import BytesIO
+from datetime import datetime, timedelta
 
-st.title("Gerador de Escala com Tendência Otimizada")
+st.title("Gerador de Escala com Datas e Feriados")
 
-st.write("Preencha os dados abaixo para gerar sua escala semanal com balanceamento e tendência leve para Jack.")
+st.write("Preencha os dados abaixo para gerar sua escala semanal com datas reais e feriados personalizados.")
 
-# Configurações fixas
-dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta']
+dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta']
 turnos = ['Manhã', 'Tarde']
-vies_turno = {'Jack': 'Tarde'}  # tendência invisível
+vies_turno = {'Jack': 'Tarde'}
 
-# Entradas
+# Entradas de datas
+data_inicio = st.date_input("Selecione a data de início da semana (uma segunda-feira):", value=datetime.today())
+feriados = st.date_input("Selecione os feriados (serão ignorados na escala):", value=[], key="feriados", format="DD/MM/YYYY")
+
+# Calcular datas reais
+datas_semana = []
+for i in range(5):
+    data = data_inicio + timedelta(days=i)
+    if data not in feriados:
+        dia_label = f"{dias_semana[i]} ({data.strftime('%d/%m')})"
+        datas_semana.append((dia_label, data))
+
+# Entradas gerais
 pessoas_manha = st.number_input("Pessoas por turno da Manhã", min_value=2, max_value=10, value=4)
 pessoas_tarde = st.number_input("Pessoas por turno da Tarde", min_value=2, max_value=10, value=2)
 capacidade = {'Manhã': pessoas_manha, 'Tarde': pessoas_tarde}
@@ -49,16 +61,13 @@ def validar_distribuicao(escala, contagem):
         turnos_usados = info['turnos']
         dias_usados = info['dias']
 
-        if 2 <= total_turnos <= 5:
-            if len(turnos_usados) < 2:
-                return False
-        if total_turnos > 5:
-            if len(dias_usados) < 4:
-                return False
+        if 2 <= total_turnos <= 5 and len(turnos_usados) < 2:
+            return False
+        if total_turnos > 5 and len(dias_usados) < 4:
+            return False
     return True
 
 def validar_tendencia_jack(escala):
-    # Tendência leve: 5 turnos → pelo menos 2 tardes, no máximo 3 manhãs
     jack_turnos = []
     for (dia, turno), pessoas in escala.items():
         if 'Jack' in pessoas:
@@ -67,31 +76,28 @@ def validar_tendencia_jack(escala):
     if len(jack_turnos) == 5:
         tardes = sum(1 for t in jack_turnos if t == 'Tarde')
         manhas = sum(1 for t in jack_turnos if t == 'Manhã')
-        if tardes >= 2 and manhas <= 3:
-            return True
-        else:
-            return False
-    return True  # Se Jack não tiver 5 turnos, ignora
+        return tardes >= 2 and manhas <= 3
+    return True
 
 if gerar:
     if not nomes or len(nomes) != len(set(nomes)):
-        st.warning("Por favor, preencha todos os nomes corretamente e sem repetições.")
+        st.warning("Preencha todos os nomes corretamente e sem repetições.")
     else:
         def gerar_escala():
-            escala = {(dia, turno): [] for dia in dias for turno in turnos}
+            escala = {(dia_label, turno): [] for (dia_label, _) in datas_semana for turno in turnos}
             contagem = defaultdict(int)
 
-            for dia in dias:
+            for dia_label, _ in datas_semana:
                 for turno in turnos:
-                    while len(escala[(dia, turno)]) < capacidade[turno]:
+                    while len(escala[(dia_label, turno)]) < capacidade[turno]:
                         candidatos = []
                         for pessoa in nomes:
                             if contagem[pessoa] >= limites[pessoa]:
                                 continue
-                            if pessoa in escala[(dia, turno)]:
+                            if pessoa in escala[(dia_label, turno)]:
                                 continue
                             if restricao_dia.get(pessoa, False):
-                                if any(pessoa in escala[(dia, t)] for t in turnos):
+                                if any(pessoa in escala[(dia_label, t)] for t in turnos):
                                     continue
                             candidatos.append(pessoa)
 
@@ -102,12 +108,12 @@ if gerar:
                         for pessoa in candidatos:
                             preferencia = vies_turno.get(pessoa)
                             if preferencia == turno:
-                                pesados.extend([pessoa]*3)  # tendência ajustada
+                                pesados.extend([pessoa]*3)
                             else:
                                 pesados.append(pessoa)
 
                         escolhido = random.choice(pesados)
-                        escala[(dia, turno)].append(escolhido)
+                        escala[(dia_label, turno)].append(escolhido)
                         contagem[escolhido] += 1
             return escala, contagem
 
@@ -122,10 +128,10 @@ if gerar:
             st.success("Escala gerada com sucesso!")
 
             data = []
-            for dia in dias:
-                linha = {'Dia': dia}
+            for (dia_label, _) in datas_semana:
+                linha = {'Dia': dia_label}
                 for turno in turnos:
-                    linha[turno] = ', '.join(escala[(dia, turno)])
+                    linha[turno] = ', '.join(escala[(dia_label, turno)])
                 data.append(linha)
             df = pd.DataFrame(data)
             st.dataframe(df.set_index('Dia'))
@@ -140,6 +146,6 @@ if gerar:
                 contagem_df.to_excel(writer, sheet_name='Turnos_por_Pessoa')
             output.seek(0)
 
-            st.download_button("Baixar escala em Excel", data=output, file_name="escala_jack_tendencia_ajustada.xlsx")
+            st.download_button("Baixar escala em Excel", data=output, file_name="escala_com_datas_e_feriados.xlsx")
         else:
-            st.error("Não foi possível gerar uma escala válida com as regras definidas.")
+            st.error("Não foi possível gerar uma escala válida com os parâmetros e feriados escolhidos.")
