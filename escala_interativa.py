@@ -5,7 +5,7 @@ import random
 from collections import defaultdict
 from io import BytesIO
 
-st.title("Gerador de Escala de Turnos Personalizado")
+st.title("Gerador de Escala de Turnos com Distribuição Balanceada")
 
 st.write("Preencha os dados abaixo para gerar sua escala semanal.")
 
@@ -37,6 +37,26 @@ with st.form("formulario_completo"):
             restricao_dia[nome] = unica_vez
     gerar = st.form_submit_button("Gerar Escala")
 
+def validar_distribuicao(escala, contagem):
+    distribuicao = defaultdict(lambda: {'dias': set(), 'turnos': set()})
+    for (dia, turno), pessoas in escala.items():
+        for pessoa in pessoas:
+            distribuicao[pessoa]['dias'].add(dia)
+            distribuicao[pessoa]['turnos'].add(turno)
+
+    for pessoa, info in distribuicao.items():
+        total_turnos = contagem[pessoa]
+        turnos_usados = info['turnos']
+        dias_usados = info['dias']
+
+        if 2 <= total_turnos <= 5:
+            if len(turnos_usados) < 2:
+                return False  # precisa manhã e tarde
+        if total_turnos > 5:
+            if len(dias_usados) < 4:
+                return False  # precisa estar em pelo menos 4 dias
+    return True
+
 if gerar:
     if not nomes or len(nomes) != len(set(nomes)):
         st.warning("Por favor, preencha todos os nomes corretamente e sem repetições.")
@@ -62,7 +82,6 @@ if gerar:
                         if not candidatos:
                             return None, None
 
-                        # Aplicar tendência invisível
                         pesados = []
                         for pessoa in candidatos:
                             preferencia = vies_turno.get(pessoa)
@@ -76,9 +95,11 @@ if gerar:
                         contagem[escolhido] += 1
             return escala, contagem
 
+        escala, contagem = None, None
         for tentativa in range(1000):
-            escala, contagem = gerar_escala()
-            if escala:
+            escala_tmp, contagem_tmp = gerar_escala()
+            if escala_tmp and validar_distribuicao(escala_tmp, contagem_tmp):
+                escala, contagem = escala_tmp, contagem_tmp
                 break
 
         if escala:
@@ -103,6 +124,6 @@ if gerar:
                 contagem_df.to_excel(writer, sheet_name='Turnos_por_Pessoa')
             output.seek(0)
 
-            st.download_button("Baixar escala em Excel", data=output, file_name="escala_simplificada.xlsx")
+            st.download_button("Baixar escala em Excel", data=output, file_name="escala_distribuida.xlsx")
         else:
-            st.error("Não foi possível gerar uma escala válida com os parâmetros informados.")
+            st.error("Não foi possível gerar uma escala válida com os parâmetros e regras de distribuição.")
