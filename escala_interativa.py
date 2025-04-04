@@ -5,14 +5,14 @@ import random
 from collections import defaultdict
 from io import BytesIO
 
-st.title("Gerador de Escala de Turnos com Distribuição Balanceada")
+st.title("Gerador de Escala com Tendência Avançada")
 
-st.write("Preencha os dados abaixo para gerar sua escala semanal.")
+st.write("Preencha os dados abaixo para gerar sua escala semanal com balanceamento e perfil personalizado.")
 
 # Configurações fixas
 dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta']
 turnos = ['Manhã', 'Tarde']
-vies_turno = {'Jack': 'Tarde'}  # tendência invisível
+vies_turno = {'Jack': 'Tarde'}  # tendência invisível reforçada
 
 # Entradas
 pessoas_manha = st.number_input("Pessoas por turno da Manhã", min_value=2, max_value=10, value=4)
@@ -51,11 +51,27 @@ def validar_distribuicao(escala, contagem):
 
         if 2 <= total_turnos <= 5:
             if len(turnos_usados) < 2:
-                return False  # precisa manhã e tarde
+                return False
         if total_turnos > 5:
             if len(dias_usados) < 4:
-                return False  # precisa estar em pelo menos 4 dias
+                return False
     return True
+
+def validar_tendencia_jack(escala):
+    # Regra especial: Jack deve sair em pelo menos 3 tardes se tiver 5 turnos
+    jack_turnos = []
+    for (dia, turno), pessoas in escala.items():
+        if 'Jack' in pessoas:
+            jack_turnos.append(turno)
+
+    if len(jack_turnos) == 5:
+        tardes = sum(1 for t in jack_turnos if t == 'Tarde')
+        manhas = sum(1 for t in jack_turnos if t == 'Manhã')
+        if tardes >= 3 and manhas <= 2:
+            return True
+        else:
+            return False
+    return True  # Se Jack não tiver exatamente 5 turnos, não aplicar
 
 if gerar:
     if not nomes or len(nomes) != len(set(nomes)):
@@ -86,7 +102,7 @@ if gerar:
                         for pessoa in candidatos:
                             preferencia = vies_turno.get(pessoa)
                             if preferencia == turno:
-                                pesados.extend([pessoa]*3)
+                                pesados.extend([pessoa]*5)  # tendência mais forte
                             else:
                                 pesados.append(pessoa)
 
@@ -98,7 +114,7 @@ if gerar:
         escala, contagem = None, None
         for tentativa in range(1000):
             escala_tmp, contagem_tmp = gerar_escala()
-            if escala_tmp and validar_distribuicao(escala_tmp, contagem_tmp):
+            if escala_tmp and validar_distribuicao(escala_tmp, contagem_tmp) and validar_tendencia_jack(escala_tmp):
                 escala, contagem = escala_tmp, contagem_tmp
                 break
 
@@ -124,6 +140,6 @@ if gerar:
                 contagem_df.to_excel(writer, sheet_name='Turnos_por_Pessoa')
             output.seek(0)
 
-            st.download_button("Baixar escala em Excel", data=output, file_name="escala_distribuida.xlsx")
+            st.download_button("Baixar escala em Excel", data=output, file_name="escala_jack_tendencia_forte.xlsx")
         else:
-            st.error("Não foi possível gerar uma escala válida com os parâmetros e regras de distribuição.")
+            st.error("Não foi possível gerar uma escala válida com as regras definidas.")
