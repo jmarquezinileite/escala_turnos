@@ -27,7 +27,7 @@ feriados_datas = list(feriados_dict.keys())
 # Calcular datas úteis da semana
 datas_semana = []
 for i in range(5):
-    data = (data_inicio + timedelta(days=i)).date()
+    data = data_inicio + timedelta(days=i)
     dia_nome = dias_semana[i]
     if data in feriados_datas:
         dia_label = f"{dia_nome} ({data.strftime('%d/%m')}) – *{feriados_dict[data]}*"
@@ -67,11 +67,11 @@ def validar_distribuicao(escala, contagem):
 
     for pessoa, info in distribuicao.items():
         total_turnos = contagem[pessoa]
-        turnos_usados = info['turnos']
-        dias_usados = info['dias']
-        if 2 <= total_turnos <= 5 and len(turnos_usados) < 2:
+        turnos_used = info['turnos']
+        dias_used = info['dias']
+        if 2 <= total_turnos <= 5 and len(turnos_used) < 2:
             return False
-        if total_turnos > 5 and len(dias_usados) < 4:
+        if total_turnos > 5 and len(dias_used) < 4:
             return False
     return True
 
