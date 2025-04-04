@@ -77,7 +77,7 @@ def validar_tendencia_jack(escala):
     if len(jack_turnos) == 5:
         tardes = sum(1 for t in jack_turnos if t == 'Tarde')
         manhas = sum(1 for t in jack_turnos if t == 'Manhã')
-        return tardes >= 2 and manhas <= 3
+        return tardes >= 3 and manhas <= 2
     return True
 
 if gerar:
@@ -113,7 +113,7 @@ if gerar:
                         for pessoa in candidatos:
                             preferencia = vies_turno.get(pessoa)
                             if preferencia == turno:
-                                pesados.extend([pessoa]*3)
+                                pesados.extend([pessoa]*5)
                             else:
                                 pesados.append(pessoa)
                         escolhido = random.choice(pesados)
