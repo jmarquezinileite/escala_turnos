@@ -5,25 +5,34 @@ import random
 from collections import defaultdict
 from io import BytesIO
 from datetime import datetime, timedelta
+from workalendar.america import Brazil
 
-st.title("Gerador de Escala com Datas e Feriados")
+st.title("Gerador de Escala com Feriados Automáticos")
 
-st.write("Preencha os dados abaixo para gerar sua escala semanal com datas reais e feriados personalizados.")
+st.write("Gere uma escala semanal com datas reais e feriados nacionais brasileiros automaticamente excluídos.")
 
 dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta']
 turnos = ['Manhã', 'Tarde']
 vies_turno = {'Jack': 'Tarde'}
 
-# Entradas de datas
-data_inicio = st.date_input("Selecione a data de início da semana (uma segunda-feira):", value=datetime.today())
-feriados = st.date_input("Selecione os feriados (serão ignorados na escala):", value=[], key="feriados", format="DD/MM/YYYY")
+# Entrada de data de início
+data_inicio = st.date_input("Data de início da semana (segunda-feira):", value=datetime.today())
+ano_escala = data_inicio.year
 
-# Calcular datas reais
+# Buscar feriados nacionais do ano
+cal = Brazil()
+feriados_dict = dict(cal.holidays(ano_escala))
+feriados_datas = list(feriados_dict.keys())
+
+# Calcular datas úteis da semana
 datas_semana = []
 for i in range(5):
     data = data_inicio + timedelta(days=i)
-    if data not in feriados:
-        dia_label = f"{dias_semana[i]} ({data.strftime('%d/%m')})"
+    dia_nome = dias_semana[i]
+    if data in feriados_datas:
+        dia_label = f"{dia_nome} ({data.strftime('%d/%m')}) – *{feriados_dict[data]}*"
+    else:
+        dia_label = f"{dia_nome} ({data.strftime('%d/%m')})"
         datas_semana.append((dia_label, data))
 
 # Entradas gerais
@@ -60,7 +69,6 @@ def validar_distribuicao(escala, contagem):
         total_turnos = contagem[pessoa]
         turnos_usados = info['turnos']
         dias_usados = info['dias']
-
         if 2 <= total_turnos <= 5 and len(turnos_usados) < 2:
             return False
         if total_turnos > 5 and len(dias_usados) < 4:
@@ -146,6 +154,6 @@ if gerar:
                 contagem_df.to_excel(writer, sheet_name='Turnos_por_Pessoa')
             output.seek(0)
 
-            st.download_button("Baixar escala em Excel", data=output, file_name="escala_com_datas_e_feriados.xlsx")
+            st.download_button("Baixar escala em Excel", data=output, file_name="escala_feriados_auto.xlsx")
         else:
-            st.error("Não foi possível gerar uma escala válida com os parâmetros e feriados escolhidos.")
+            st.error("Não foi possível gerar uma escala válida com os parâmetros definidos.")
