@@ -5,11 +5,10 @@ import random
 from collections import defaultdict
 from io import BytesIO
 from datetime import datetime, timedelta
-from workalendar.america import Brazil
 
-st.title("Gerador de Escala com Feriados Automáticos")
+st.title("Gerador de Escala com Feriados Opcionais")
 
-st.write("Gere uma escala semanal com datas reais e feriados nacionais brasileiros automaticamente excluídos.")
+st.write("Gere uma escala semanal com datas reais. Se desejar, exclua manualmente os dias de feriado.")
 
 dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta']
 turnos = ['Manhã', 'Tarde']
@@ -17,25 +16,24 @@ vies_turno = {'Jack': 'Tarde'}
 
 # Entrada de data de início
 data_inicio = st.date_input("Data de início da semana (segunda-feira):", value=datetime.today(), format="DD/MM/YYYY")
-ano_escala = data_inicio.year
 
-# Buscar feriados nacionais do ano
-cal = Brazil()
-feriados_dict = dict(cal.holidays(ano_escala))
-feriados_datas = list(feriados_dict.keys())
+# Feriados opcionais
+usar_feriados = st.checkbox("Deseja excluir feriados nesta semana?", value=False)
+feriados = []
 
-# Calcular datas úteis da semana
+if usar_feriados:
+    opcoes = [data_inicio + timedelta(days=i) for i in range(5)]
+    feriados = st.multiselect("Selecione os feriados:", opcoes, format_func=lambda d: d.strftime("%A (%d/%m)"))
+
+# Gerar lista de dias úteis
 datas_semana = []
 for i in range(5):
     data = data_inicio + timedelta(days=i)
-    dia_nome = dias_semana[i]
-    if data in feriados_datas:
-        dia_label = f"{dia_nome} ({data.strftime('%d/%m')}) – *{feriados_dict[data]}*"
-    else:
-        dia_label = f"{dia_nome} ({data.strftime('%d/%m')})"
+    if data not in feriados:
+        dia_label = f"{dias_semana[i]} ({data.strftime('%d/%m')})"
         datas_semana.append((dia_label, data))
 
-# Entradas gerais
+# Entrada de configuração
 pessoas_manha = st.number_input("Pessoas por turno da Manhã", min_value=2, max_value=10, value=4)
 pessoas_tarde = st.number_input("Pessoas por turno da Tarde", min_value=2, max_value=10, value=2)
 capacidade = {'Manhã': pessoas_manha, 'Tarde': pessoas_tarde}
@@ -64,14 +62,11 @@ def validar_distribuicao(escala, contagem):
         for pessoa in pessoas:
             distribuicao[pessoa]['dias'].add(dia)
             distribuicao[pessoa]['turnos'].add(turno)
-
     for pessoa, info in distribuicao.items():
         total_turnos = contagem[pessoa]
-        turnos_used = info['turnos']
-        dias_used = info['dias']
-        if 2 <= total_turnos <= 5 and len(turnos_used) < 2:
+        if 2 <= total_turnos <= 5 and len(info['turnos']) < 2:
             return False
-        if total_turnos > 5 and len(dias_used) < 4:
+        if total_turnos > 5 and len(info['dias']) < 4:
             return False
     return True
 
@@ -80,7 +75,6 @@ def validar_tendencia_jack(escala):
     for (dia, turno), pessoas in escala.items():
         if 'Jack' in pessoas:
             jack_turnos.append(turno)
-
     if len(jack_turnos) == 5:
         tardes = sum(1 for t in jack_turnos if t == 'Tarde')
         manhas = sum(1 for t in jack_turnos if t == 'Manhã')
@@ -94,7 +88,6 @@ if gerar:
         def gerar_escala():
             escala = {(dia_label, turno): [] for (dia_label, _) in datas_semana for turno in turnos}
             contagem = defaultdict(int)
-
             for dia_label, _ in datas_semana:
                 for turno in turnos:
                     while len(escala[(dia_label, turno)]) < capacidade[turno]:
@@ -108,10 +101,8 @@ if gerar:
                                 if any(pessoa in escala[(dia_label, t)] for t in turnos):
                                     continue
                             candidatos.append(pessoa)
-
                         if not candidatos:
                             return None, None
-
                         pesados = []
                         for pessoa in candidatos:
                             preferencia = vies_turno.get(pessoa)
@@ -119,7 +110,6 @@ if gerar:
                                 pesados.extend([pessoa]*3)
                             else:
                                 pesados.append(pessoa)
-
                         escolhido = random.choice(pesados)
                         escala[(dia_label, turno)].append(escolhido)
                         contagem[escolhido] += 1
@@ -134,7 +124,6 @@ if gerar:
 
         if escala:
             st.success("Escala gerada com sucesso!")
-
             data = []
             for (dia_label, _) in datas_semana:
                 linha = {'Dia': dia_label}
@@ -154,6 +143,6 @@ if gerar:
                 contagem_df.to_excel(writer, sheet_name='Turnos_por_Pessoa')
             output.seek(0)
 
-            st.download_button("Baixar escala em Excel", data=output, file_name="escala_corrigida.xlsx")
+            st.download_button("Baixar escala em Excel", data=output, file_name="escala_feriados_opcionais.xlsx")
         else:
             st.error("Não foi possível gerar uma escala válida com os parâmetros definidos.")
