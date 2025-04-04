@@ -101,7 +101,7 @@ if gerar:
                             if pessoa in escala[(dia_label, turno)]:
                                 continue
                             if restricao_dia.get(pessoa, False):
-                                if any(pessoa in escala[(dia_label, t)] for t in turnos):
+                                if any(pessoa in escala.get((dia_label, t), []) for t in turnos):
                                     continue
                             candidatos.append(pessoa)
                         if not candidatos:
@@ -146,6 +146,6 @@ if gerar:
                 contagem_df.to_excel(writer, sheet_name='Turnos_por_Agente')
             output.seek(0)
 
-            st.download_button("Baixar escala em Excel", data=output, file_name="escala_feriados_personalizados.xlsx")
+            st.download_button("Baixar escala em Excel", data=output, file_name="escala_final.xlsx")
         else:
             st.error("Não foi possível gerar uma escala válida com os parâmetros definidos.")
