@@ -23,7 +23,7 @@ num_pessoas = st.number_input("Quantos participantes?", min_value=2, max_value=2
 st.subheader("Participantes e seus turnos semanais")
 
 # Armazenar os dados fora do formulário
-nomes = ["" for _ in range(int(num_pessoas))]
+nomes_raw = ["" for _ in range(int(num_pessoas))]
 limites = {}
 restricao_dia = {}
 turno_fixo_participante = {}
@@ -31,83 +31,88 @@ turno_fixo_participante = {}
 with st.form("form_participantes"):
     for i in range(int(num_pessoas)):
         col1, col2, col3, col4 = st.columns([2, 1, 2, 2])
-        nomes[i] = col1.text_input(f"Nome do participante {i+1}", key=f"nome_{i}")
-        limites[nomes[i]] = col2.number_input(f"Turnos", min_value=1, max_value=50, value=1, key=f"turno_{i}")
-        restricao_dia[nomes[i]] = col3.checkbox("Máx. 1 turno por dia", value=True, key=f"restricao_{i}")
-        turno_fixo = col4.selectbox("Turno fixo (opcional)", options=["", "Manhã", "Tarde"], key=f"fixo_{i}")
-        if turno_fixo:
-            turno_fixo_participante[nomes[i]] = turno_fixo
+        nome = col1.text_input(f"Nome do participante {i+1}", key=f"nome_{i}")
+        nomes_raw[i] = nome
+        if nome.strip() != "":
+            limites[nome] = col2.number_input(f"Turnos", min_value=1, max_value=50, value=1, key=f"turno_{i}")
+            restricao_dia[nome] = col3.checkbox("Máx. 1 turno por dia", value=True, key=f"restricao_{i}")
+            turno_fixo = col4.selectbox("Turno fixo (opcional)", options=["", "Manhã", "Tarde"], key=f"fixo_{i}")
+            if turno_fixo:
+                turno_fixo_participante[nome] = turno_fixo
     submitted = st.form_submit_button("Confirmar Participantes")
 
 # Limpar nomes inválidos
-nomes = [n for n in nomes if n.strip() != ""]
+nomes = [n for n in nomes_raw if n.strip() != ""]
 
-# Sorteio
-if submitted and nomes:
-    def gerar_escala():
-        escala = {(dia, turno): [] for dia in dias for turno in turnos}
-        contagem = defaultdict(int)
-
-        for dia in dias:
-            for turno in turnos:
-                while len(escala[(dia, turno)]) < capacidade[turno]:
-                    candidatos = []
-                    for pessoa in nomes:
-                        if contagem[pessoa] >= limites[pessoa]:
-                            continue
-                        if pessoa in escala[(dia, turno)]:
-                            continue
-                        if restricao_dia.get(pessoa, False):
-                            if any(pessoa in escala[(dia, t)] for t in turnos):
-                                continue
-                        if turno_fixo_participante.get(pessoa) and turno != turno_fixo_participante[pessoa]:
-                            continue
-                        candidatos.append(pessoa)
-
-                    if not candidatos:
-                        return None, None
-
-                    # Aplicar tendência invisível
-                    pesados = []
-                    for pessoa in candidatos:
-                        preferencia = vies_turno.get(pessoa)
-                        if preferencia == turno:
-                            pesados.extend([pessoa]*3)
-                        else:
-                            pesados.append(pessoa)
-
-                    escolhido = random.choice(pesados)
-                    escala[(dia, turno)].append(escolhido)
-                    contagem[escolhido] += 1
-        return escala, contagem
-
-    for tentativa in range(1000):
-        escala, contagem = gerar_escala()
-        if escala:
-            break
-
-    if escala:
-        st.success("Escala gerada com sucesso!")
-
-        data = []
-        for dia in dias:
-            linha = {'Dia': dia}
-            for turno in turnos:
-                linha[turno] = ', '.join(escala[(dia, turno)])
-            data.append(linha)
-        df = pd.DataFrame(data)
-        st.dataframe(df.set_index('Dia'))
-
-        contagem_df = pd.DataFrame.from_dict(contagem, orient='index', columns=['Turnos']).sort_index()
-        st.subheader("Turnos por pessoa")
-        st.dataframe(contagem_df)
-
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Escala')
-            contagem_df.to_excel(writer, sheet_name='Turnos_por_Pessoa')
-        output.seek(0)
-
-        st.download_button("Baixar escala em Excel", data=output, file_name="escala_corrigida.xlsx")
+# Validar antes de sortear
+if submitted:
+    if not nomes or len(nomes) != len(set(nomes)):
+        st.warning("Por favor, preencha todos os nomes corretamente e sem repetições.")
     else:
-        st.error("Não foi possível gerar uma escala válida com os parâmetros informados.")
+        def gerar_escala():
+            escala = {(dia, turno): [] for dia in dias for turno in turnos}
+            contagem = defaultdict(int)
+
+            for dia in dias:
+                for turno in turnos:
+                    while len(escala[(dia, turno)]) < capacidade[turno]:
+                        candidatos = []
+                        for pessoa in nomes:
+                            if contagem[pessoa] >= limites[pessoa]:
+                                continue
+                            if pessoa in escala[(dia, turno)]:
+                                continue
+                            if restricao_dia.get(pessoa, False):
+                                if any(pessoa in escala[(dia, t)] for t in turnos):
+                                    continue
+                            if turno_fixo_participante.get(pessoa) and turno != turno_fixo_participante[pessoa]:
+                                continue
+                            candidatos.append(pessoa)
+
+                        if not candidatos:
+                            return None, None
+
+                        # Aplicar tendência invisível
+                        pesados = []
+                        for pessoa in candidatos:
+                            preferencia = vies_turno.get(pessoa)
+                            if preferencia == turno:
+                                pesados.extend([pessoa]*3)
+                            else:
+                                pesados.append(pessoa)
+
+                        escolhido = random.choice(pesados)
+                        escala[(dia, turno)].append(escolhido)
+                        contagem[escolhido] += 1
+            return escala, contagem
+
+        for tentativa in range(1000):
+            escala, contagem = gerar_escala()
+            if escala:
+                break
+
+        if escala:
+            st.success("Escala gerada com sucesso!")
+
+            data = []
+            for dia in dias:
+                linha = {'Dia': dia}
+                for turno in turnos:
+                    linha[turno] = ', '.join(escala[(dia, turno)])
+                data.append(linha)
+            df = pd.DataFrame(data)
+            st.dataframe(df.set_index('Dia'))
+
+            contagem_df = pd.DataFrame.from_dict(contagem, orient='index', columns=['Turnos']).sort_index()
+            st.subheader("Turnos por pessoa")
+            st.dataframe(contagem_df)
+
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Escala')
+                contagem_df.to_excel(writer, sheet_name='Turnos_por_Pessoa')
+            output.seek(0)
+
+            st.download_button("Baixar escala em Excel", data=output, file_name="escala_corrigida.xlsx")
+        else:
+            st.error("Não foi possível gerar uma escala válida com os parâmetros informados.")
