@@ -87,7 +87,9 @@ if gerar:
         def gerar_escala():
             escala = {}
             contagem = defaultdict(int)
-            for dia_label, data, is_feriado in datas_semana:
+            dias_embaralhados = datas_semana.copy()
+            random.shuffle(dias_embaralhados)
+            for dia_label, data, is_feriado in dias_embaralhados:
                 for turno in turnos:
                     if is_feriado:
                         escala[(dia_label, turno)] = ["Feriado"]
@@ -104,6 +106,7 @@ if gerar:
                                 if any(pessoa in escala.get((dia_label, t), []) for t in turnos):
                                     continue
                             candidatos.append(pessoa)
+                        random.shuffle(candidatos)
                         if not candidatos:
                             return None, None
                         pesados = []
