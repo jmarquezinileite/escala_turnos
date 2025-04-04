@@ -17,29 +17,28 @@ vies_turno = {'Jack': 'Tarde'}
 # Entrada de data de início
 data_inicio = st.date_input("Data de início da semana (segunda-feira):", value=datetime.today(), format="DD/MM/YYYY")
 
-# Feriados opcionais
+# Feriados opcionais com calendário expandido
 usar_feriados = st.checkbox("Deseja excluir feriados nesta semana?", value=False)
 feriados = []
 
 if usar_feriados:
-    opcoes = [data_inicio + timedelta(days=i) for i in range(5)]
-    feriados = st.multiselect("Selecione os feriados:", opcoes, format_func=lambda d: d.strftime("%A (%d/%m)"))
+    feriados = st.date_input("Selecione os feriados:", value=[], format="DD/MM/YYYY", key="feriados", help="Datas selecionadas serão marcadas como feriado.", disabled=not usar_feriados)
 
-# Gerar lista de dias úteis
+# Gerar lista de dias da semana com ou sem feriado
 datas_semana = []
 for i in range(5):
     data = data_inicio + timedelta(days=i)
-    if data not in feriados:
-        dia_label = f"{dias_semana[i]} ({data.strftime('%d/%m')})"
-        datas_semana.append((dia_label, data))
+    dia_label = f"{dias_semana[i]} ({data.strftime('%d/%m')})"
+    is_feriado = data in feriados
+    datas_semana.append((dia_label, data, is_feriado))
 
 # Entrada de configuração
 pessoas_manha = st.number_input("Pessoas por turno da Manhã", min_value=2, max_value=10, value=4)
 pessoas_tarde = st.number_input("Pessoas por turno da Tarde", min_value=2, max_value=10, value=2)
 capacidade = {'Manhã': pessoas_manha, 'Tarde': pessoas_tarde}
-num_pessoas = st.number_input("Quantos participantes?", min_value=2, max_value=20, value=6)
+num_pessoas = st.number_input("Quantos agentes?", min_value=2, max_value=20, value=6)
 
-st.subheader("Participantes e seus turnos semanais")
+st.subheader("Agentes e seus turnos semanais")
 nomes = []
 limites = {}
 restricao_dia = {}
@@ -47,7 +46,7 @@ restricao_dia = {}
 with st.form("formulario_completo"):
     for i in range(int(num_pessoas)):
         col1, col2, col3 = st.columns([2, 1, 2])
-        nome = col1.text_input(f"Nome do participante {i+1}", key=f"nome_{i}")
+        nome = col1.text_input("Agente", key=f"nome_{i}")
         turnos_semanais = col2.number_input("Turnos", min_value=1, max_value=50, value=1, key=f"turno_{i}")
         unica_vez = col3.checkbox("Máx. 1 turno por dia", value=False, key=f"restricao_{i}")
         if nome:
@@ -86,10 +85,14 @@ if gerar:
         st.warning("Preencha todos os nomes corretamente e sem repetições.")
     else:
         def gerar_escala():
-            escala = {(dia_label, turno): [] for (dia_label, _) in datas_semana for turno in turnos}
+            escala = {}
             contagem = defaultdict(int)
-            for dia_label, _ in datas_semana:
+            for dia_label, data, is_feriado in datas_semana:
                 for turno in turnos:
+                    if is_feriado:
+                        escala[(dia_label, turno)] = ["Feriado"]
+                        continue
+                    escala[(dia_label, turno)] = []
                     while len(escala[(dia_label, turno)]) < capacidade[turno]:
                         candidatos = []
                         for pessoa in nomes:
@@ -125,7 +128,7 @@ if gerar:
         if escala:
             st.success("Escala gerada com sucesso!")
             data = []
-            for (dia_label, _) in datas_semana:
+            for (dia_label, _, _) in datas_semana:
                 linha = {'Dia': dia_label}
                 for turno in turnos:
                     linha[turno] = ', '.join(escala[(dia_label, turno)])
@@ -134,15 +137,15 @@ if gerar:
             st.dataframe(df.set_index('Dia'))
 
             contagem_df = pd.DataFrame.from_dict(contagem, orient='index', columns=['Turnos']).sort_index()
-            st.subheader("Turnos por pessoa")
+            st.subheader("Turnos por agente")
             st.dataframe(contagem_df)
 
             output = BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df.to_excel(writer, index=False, sheet_name='Escala')
-                contagem_df.to_excel(writer, sheet_name='Turnos_por_Pessoa')
+                contagem_df.to_excel(writer, sheet_name='Turnos_por_Agente')
             output.seek(0)
 
-            st.download_button("Baixar escala em Excel", data=output, file_name="escala_feriados_opcionais.xlsx")
+            st.download_button("Baixar escala em Excel", data=output, file_name="escala_feriados_personalizados.xlsx")
         else:
             st.error("Não foi possível gerar uma escala válida com os parâmetros definidos.")
