@@ -16,7 +16,7 @@ turnos = ['Manhã', 'Tarde']
 vies_turno = {'Jack': 'Tarde'}
 
 # Entrada de data de início
-data_inicio = st.date_input("Data de início da semana (segunda-feira):", value=datetime.today())
+data_inicio = st.date_input("Data de início da semana (segunda-feira):", value=datetime.today(), format="DD/MM/YYYY")
 ano_escala = data_inicio.year
 
 # Buscar feriados nacionais do ano
@@ -27,7 +27,7 @@ feriados_datas = list(feriados_dict.keys())
 # Calcular datas úteis da semana
 datas_semana = []
 for i in range(5):
-    data = data_inicio + timedelta(days=i)
+    data = (data_inicio + timedelta(days=i)).date()
     dia_nome = dias_semana[i]
     if data in feriados_datas:
         dia_label = f"{dia_nome} ({data.strftime('%d/%m')}) – *{feriados_dict[data]}*"
@@ -51,7 +51,7 @@ with st.form("formulario_completo"):
         col1, col2, col3 = st.columns([2, 1, 2])
         nome = col1.text_input(f"Nome do participante {i+1}", key=f"nome_{i}")
         turnos_semanais = col2.number_input("Turnos", min_value=1, max_value=50, value=1, key=f"turno_{i}")
-        unica_vez = col3.checkbox("Máx. 1 turno por dia", value=True, key=f"restricao_{i}")
+        unica_vez = col3.checkbox("Máx. 1 turno por dia", value=False, key=f"restricao_{i}")
         if nome:
             nomes.append(nome)
             limites[nome] = turnos_semanais
@@ -154,6 +154,6 @@ if gerar:
                 contagem_df.to_excel(writer, sheet_name='Turnos_por_Pessoa')
             output.seek(0)
 
-            st.download_button("Baixar escala em Excel", data=output, file_name="escala_feriados_auto.xlsx")
+            st.download_button("Baixar escala em Excel", data=output, file_name="escala_corrigida.xlsx")
         else:
             st.error("Não foi possível gerar uma escala válida com os parâmetros definidos.")
