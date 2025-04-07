@@ -125,35 +125,47 @@ if gerar:
 
         if escala:
             st.success("Escala gerada com sucesso!")
+
             data = []
             for (dia_label, _, _) in datas_semana:
-                linha = {'Dia': dia_label}
                 for turno in turnos:
-                    linha[turno] = ', '.join(escala[(dia_label, turno)])
-                data.append(linha)
+                    agentes = escala.get((dia_label, turno), [])
+                    if agentes == ["Feriado"]:
+                        data.append({
+                            'Dia': dia_label,
+                            'Turno': turno,
+                            'Agentes': 'Feriado',
+                            'Anhanguera': '—',
+                            'Dom Pedro': '—'
+                        })
+                    elif isinstance(agentes, list):
+                        linha = {
+                            'Dia': dia_label,
+                            'Turno': turno,
+                            'Agentes': ', '.join(agentes)
+                        }
+                        if len(agentes) == 4:
+                            temp = agentes[:]
+                            random.shuffle(temp)
+                            linha['Anhanguera'] = ', '.join(temp[:2])
+                            linha['Dom Pedro'] = ', '.join(temp[2:])
+                        else:
+                            linha['Anhanguera'] = '—'
+                            linha['Dom Pedro'] = '—'
+                        data.append(linha)
             df = pd.DataFrame(data)
-            st.dataframe(df.set_index('Dia'))
+            st.dataframe(df)
 
             contagem_df = pd.DataFrame.from_dict(contagem, orient='index', columns=['Turnos']).sort_index()
             st.subheader("Turnos por agente")
             st.dataframe(contagem_df)
 
-            st.markdown("### 🔀 Divisão em Eixos para Turnos com 4 Agentes")
-            for (dia_label, turno), agentes in escala.items():
-                if isinstance(agentes, list) and len(agentes) == 4:
-                    random.shuffle(agentes)
-                    eixo_a = agentes[:2]
-                    eixo_b = agentes[2:]
-                    st.markdown(f"**{dia_label} – {turno}**")
-                    st.markdown(f"- 🟦 Anhanguera: {', '.join(eixo_a)}")
-                    st.markdown(f"- 🟪 Dom Pedro: {', '.join(eixo_b)}")
-
             output = BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name='Escala')
+                df.to_excel(writer, index=False, sheet_name='Escala_com_Eixos')
                 contagem_df.to_excel(writer, sheet_name='Turnos_por_Agente')
             output.seek(0)
 
-            st.download_button("Baixar escala em Excel", data=output, file_name="escala_final_eixos.xlsx")
+            st.download_button("Baixar escala em Excel", data=output, file_name="escala_tabela_completa.xlsx")
         else:
             st.error("Não foi possível gerar uma escala válida com os parâmetros definidos.")
