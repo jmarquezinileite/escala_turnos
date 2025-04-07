@@ -7,9 +7,10 @@ from io import BytesIO
 from datetime import datetime, timedelta
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
+from openpyxl.utils import get_column_letter
 
-st.set_page_config(layout="wide")
-st.title("Gerador de Escala Semanal com Formato Modelo")
+st.set_page_config(layout="centered")
+st.title("Gerador de Escala Semanal - Modelo Formatado")
 
 dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta']
 turnos = ['Manhã', 'Tarde']
@@ -120,6 +121,8 @@ if gerar:
                 break
 
         if escala:
+            st.success("Escala gerada com sucesso!")
+
             data = []
             inclui_eixos = any(len(p) == 4 for p in escala.values() if isinstance(p, list))
 
@@ -144,7 +147,13 @@ if gerar:
             contagem_df = pd.DataFrame.from_dict(contagem, orient='index', columns=['Turnos']).reset_index()
             contagem_df.columns = ['Agente', 'Turnos']
 
-            # Criação da planilha no formato modelo
+            st.markdown("### 📋 Escala da Semana")
+            st.dataframe(df)
+
+            st.markdown("### 📊 Turnos por Agente")
+            st.dataframe(contagem_df)
+
+            # Planilha com formatação especial
             output = BytesIO()
             wb = Workbook()
             ws = wb.active
@@ -156,21 +165,48 @@ if gerar:
             ws["A1"].font = Font(bold=True)
             ws["A1"].alignment = Alignment(horizontal='center')
 
-            headers = ['Dia', 'Turno', 'Agentes']
+            ws.merge_cells("A2:A3")
+            ws.merge_cells("B2:B3")
+            ws.merge_cells("C2:C3")
             if inclui_eixos:
-                headers += ['Anhanguera', 'Dom Pedro']
-            ws.append(headers)
+                ws.merge_cells("D2:E2")
+                ws["D2"] = "Eixos"
+                ws["D2"].alignment = Alignment(horizontal='center')
+                ws["D3"] = "Anhanguera"
+                ws["E3"] = "Dom Pedro"
+            else:
+                ws["D2"] = ""
+                ws["E2"] = ""
 
+            ws["A2"] = "Dia"
+            ws["B2"] = "Turno"
+            ws["C2"] = "Agentes"
+
+            row_idx = 4
+            prev_dia = None
             for _, row in df.iterrows():
-                linha = [row['Dia'], row['Turno'], row['Agentes']]
+                current_dia = row["Dia"]
+                if current_dia == prev_dia:
+                    ws[f"A{row_idx}"] = ""
+                else:
+                    ws[f"A{row_idx}"] = current_dia
+                    if row_idx < len(df)+4:
+                        ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx+1, end_column=1)
+                        ws[f"A{row_idx}"].alignment = Alignment(vertical='center', horizontal='center')
+                ws[f"B{row_idx}"] = row["Turno"]
+                ws[f"C{row_idx}"] = row["Agentes"]
                 if inclui_eixos:
-                    linha += [row['Anhanguera'], row['Dom Pedro']]
-                ws.append(linha)
+                    ws[f"D{row_idx}"] = row["Anhanguera"]
+                    ws[f"E{row_idx}"] = row["Dom Pedro"]
+                row_idx += 1
+                prev_dia = current_dia
 
-            ws.append([])
-            ws.append(['Agente', 'Turnos'])
-            for _, row in contagem_df.iterrows():
-                ws.append(row.tolist())
+            row_idx += 1
+            ws[f"A{row_idx}"] = "Agente"
+            ws[f"B{row_idx}"] = "Turnos"
+            for i, row in contagem_df.iterrows():
+                ws[f"A{row_idx+1+i}"] = row["Agente"]
+                ws[f"B{row_idx+1+i}"] = row["Turnos"]
 
             wb.save(output)
             output.seek(0)
