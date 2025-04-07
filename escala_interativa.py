@@ -9,7 +9,10 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 
 st.set_page_config(layout="centered")
-st.title("Gerador de Escala Semanal - Estável")
+st.title("📅 Gerador de Escala Semanal")
+
+st.markdown("### 📆 Configuração da Semana")
+
 
 dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta']
 turnos = ['Manhã', 'Tarde']
@@ -19,12 +22,13 @@ data_inicio = st.date_input("Data de início da semana (segunda-feira):", value=
 data_inicio_real = data_inicio - timedelta(days=data_inicio.weekday())
 data_fim = data_inicio_real + timedelta(days=4)
 
+st.markdown("### 🧮 Capacidade por turno")
 pessoas_manha = st.number_input("Pessoas por turno da Manhã", min_value=2, max_value=10, value=4)
 pessoas_tarde = st.number_input("Pessoas por turno da Tarde", min_value=2, max_value=10, value=2)
 capacidade = {'Manhã': pessoas_manha, 'Tarde': pessoas_tarde}
 num_pessoas = st.number_input("Quantos agentes?", min_value=2, max_value=20, value=6)
 
-st.subheader("Agentes e seus turnos semanais")
+st.markdown("### 👥 Cadastro de Agentes")
 nomes = []
 limites = {}
 restricao_dia = {}
@@ -39,7 +43,8 @@ with st.form("formulario_completo"):
             nomes.append(nome)
             limites[nome] = turnos_semanais
             restricao_dia[nome] = unica_vez
-    gerar = st.form_submit_button("Gerar Escala")
+    st.markdown("### 🚀 Gerar escala")
+gerar = st.form_submit_button("📌 Gerar agora", use_container_width=True)
 
 def gerar_escala(datas_semana):
     escala = {}
