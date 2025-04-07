@@ -184,9 +184,9 @@ if gerar:
                 atual_dia = getattr(row, "Dia")
                 is_same = atual_dia == ultimo_dia
                 if is_same:
-                    ws.append(["", getattr(row, "Turno"), row['Agentes'], row['Anhanguera'], row['Dom Pedro']] if inclui_eixos else ["", getattr(row, "Turno"), row['Agentes']])
+                    ws.append(["", row['Turno'], row['Agentes'], row['Anhanguera'], row['Dom Pedro']] if inclui_eixos else ["", row['Turno'], row['Agentes']])
                 else:
-                    ws.append([atual_dia, getattr(row, "Turno"), row['Agentes'], row['Anhanguera'], row['Dom Pedro']] if inclui_eixos else [atual_dia, getattr(row, "Turno"), row['Agentes']])
+                    ws.append([atual_dia, row['Turno'], row['Agentes'], row['Anhanguera'], row['Dom Pedro']] if inclui_eixos else [atual_dia, row['Turno'], row['Agentes']])
                 
                 ultimo_dia = atual_dia
                 idx += 1
