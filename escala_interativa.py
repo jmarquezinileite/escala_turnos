@@ -44,7 +44,7 @@ with st.form("formulario_completo"):
             limites[nome] = turnos_semanais
             restricao_dia[nome] = unica_vez
     st.markdown("### Gerar escala")
-gerar = st.form_submit_button("Gerar agora", )
+    gerar = st.form_submit_button("Gerar agora")
 
 def gerar_escala(datas_semana):
     escala = {}
