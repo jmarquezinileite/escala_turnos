@@ -1,4 +1,11 @@
 
-# O conteúdo será gerado corrigindo a lógica da mesclagem e da AACA
-# Mantendo todas as funcionalidades anteriores e layout com segurança
-# Será adicionado a seguir
+import streamlit as st
+from datetime import datetime
+
+st.set_page_config(layout="centered")
+st.title("🔧 Teste de Carregamento do App")
+
+st.write("Se você está vendo esta mensagem, o Streamlit está funcionando corretamente.")
+
+if st.button("Clique aqui para testar"):
+    st.success(f"O app está respondendo! Data atual: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
