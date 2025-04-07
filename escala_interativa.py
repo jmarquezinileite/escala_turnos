@@ -14,17 +14,14 @@ dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta']
 turnos = ['Manhã', 'Tarde']
 vies_turno = {'Jack': 'Tarde'}
 
-# Entrada de data de início
 data_inicio = st.date_input("Data de início da semana (segunda-feira):", value=datetime.today(), format="DD/MM/YYYY")
 
-# Feriados opcionais com calendário expandido
 usar_feriados = st.checkbox("Deseja excluir feriados nesta semana?", value=False)
 feriados = []
 
 if usar_feriados:
     feriados = st.date_input("Selecione os feriados:", value=[], format="DD/MM/YYYY", key="feriados", help="Datas selecionadas serão marcadas como feriado.", disabled=not usar_feriados)
 
-# Gerar lista de dias da semana com ou sem feriado
 datas_semana = []
 for i in range(5):
     data = data_inicio + timedelta(days=i)
@@ -32,7 +29,6 @@ for i in range(5):
     is_feriado = data in feriados
     datas_semana.append((dia_label, data, is_feriado))
 
-# Entrada de configuração
 pessoas_manha = st.number_input("Pessoas por turno da Manhã", min_value=2, max_value=10, value=4)
 pessoas_tarde = st.number_input("Pessoas por turno da Tarde", min_value=2, max_value=10, value=2)
 capacidade = {'Manhã': pessoas_manha, 'Tarde': pessoas_tarde}
@@ -76,8 +72,7 @@ def validar_tendencia_jack(escala):
             jack_turnos.append(turno)
     if len(jack_turnos) == 5:
         tardes = sum(1 for t in jack_turnos if t == 'Tarde')
-        manhas = sum(1 for t in jack_turnos if t == 'Manhã')
-        return tardes >= 2 and manhas <= 3
+        return tardes >= 2
     return True
 
 if gerar:
@@ -143,12 +138,22 @@ if gerar:
             st.subheader("Turnos por agente")
             st.dataframe(contagem_df)
 
+            st.markdown("### 🔀 Divisão em Eixos para Turnos com 4 Agentes")
+            for (dia_label, turno), agentes in escala.items():
+                if isinstance(agentes, list) and len(agentes) == 4:
+                    random.shuffle(agentes)
+                    eixo_a = agentes[:2]
+                    eixo_b = agentes[2:]
+                    st.markdown(f"**{dia_label} – {turno}**")
+                    st.markdown(f"- 🟦 Anhanguera: {', '.join(eixo_a)}")
+                    st.markdown(f"- 🟪 Dom Pedro: {', '.join(eixo_b)}")
+
             output = BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df.to_excel(writer, index=False, sheet_name='Escala')
                 contagem_df.to_excel(writer, sheet_name='Turnos_por_Agente')
             output.seek(0)
 
-            st.download_button("Baixar escala em Excel", data=output, file_name="escala_final.xlsx")
+            st.download_button("Baixar escala em Excel", data=output, file_name="escala_final_eixos.xlsx")
         else:
             st.error("Não foi possível gerar uma escala válida com os parâmetros definidos.")
