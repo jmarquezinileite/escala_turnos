@@ -144,6 +144,13 @@ if gerar:
                     data.append(linha)
 
             df = pd.DataFrame(data)
+
+            if inclui_eixos:
+                if "Anhanguera" not in df.columns:
+                    df["Anhanguera"] = ""
+                if "Dom Pedro" not in df.columns:
+                    df["Dom Pedro"] = ""
+
             contagem_df = pd.DataFrame.from_dict(contagem, orient='index', columns=['Turnos']).reset_index()
             contagem_df.columns = ['Agente', 'Turnos']
 
